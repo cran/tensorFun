@@ -1,0 +1,118 @@
+---
+title: "A-short-introduction-to-tensorFun"
+output: rmarkdown::html_vignette
+bibliography: ref.bib
+vignette: >
+  %\VignetteIndexEntry{A-short-introduction-to-tensorFun}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r, warning=F, message=FALSE, eval=TRUE}
+library(tensorFun)
+```
+
+## 1 Quick start
+
+We go through some basic functions in 'tensorFun' in this vignettes. First, we start with constructing a tensor, which is by using the base class 'array' in R. The following tensor is an order-$3$ tensor with dimensions $3\times 4\times 2$.
+
+```{r}
+a <- array(1:24, dim=c(3,4,2))
+```
+
+As we can see, subsetting and truncating in multi-dimensional arrays are trivial, and we display them below by an example to inject missingness inside the tensor.
+
+```{r}
+a[3,1,1] <- NA
+print(a)
+```
+
+Now we perform rearrangement for the tensor, and the result displayed shows the validity of the algorithm. The following is subsequent rearrangement along mode $1$, mode $2$, and mode $3$, respectively.
+
+```{r}
+b <- a
+b <- rearrange(b, 1)$ten
+b <- rearrange(b, 2)$ten
+b <- rearrange(b, 3)$ten
+print(b)
+```
+
+Indeed, the reverse algorithm for rearrangement returns back to the original tensor we have, but we need to keep track of the arranged set of indices along each mode.
+
+```{r}
+# rearrange
+c <- rearrange(a, 1)
+l1 <- c$l
+c <- rearrange(c$ten, 2)
+l2 <- c$l
+c <- rearrange(c$ten, 3)
+l3 <- c$l
+
+# rearrange backwards
+d <- rearrange_inv(c$ten, 1, l1)
+d <- rearrange_inv(d, 2, l2)
+d <- rearrange_inv(d, 3, l3)
+print(d==a)
+```
+
+$\textbf{Notice}:$ The mode order of 'rearrange' and 'rearrange_inv' does **NOT** matter, but more caution is needed in storing the rearrangement list of indices 'rearrange'. For simplicity, see section 2 for a one-click rearrangement algorithm facilitating sweeping through rearrangement algorithm along all modes.
+
+## 2 Rearrangement algorithm
+
+The rearrangement algorithm was proposed by Bai and Ng [@Bai_Ng] on vector time series, and hence the entire data is a matrix. The rearrangement algorithm could be extended to high order tensor data, as shown in section 1, with order-2 tensor returning back to the algorithm of Bai and Ng.\
+\
+Ideally, we might often want to sweep through all modes of the tensor data. If so, instead of performing rearrangement algorithm on each mode, we provide the 'All_rearrange' function to rearrange the data entirely.
+
+```{r}
+All_rearrange(a)
+```
+
+Notice all modes including the time mode should be rearranged. Furthermore, in case some modes are not to be rearranged, we can state the excluded modes in the parameter space.\
+\
+Similarly, we provide the 'All_inv' function to reverse the rearrangement for the entire data, and the reversed data shall be the original one, as shown below.
+
+```{r}
+All_inv(All_rearrange(a)) == a
+```
+
+## 3 Unfolding, refolding, and k-mode matrix product
+
+We now quickly go through the basic unfolding and refolding functions as an example.
+
+```{r}
+a.1 <- unfold(a, 1)
+print(a.1)
+```
+
+Without doubt, the refolding of an unfolding matrix returns back to the original tensor, given the correct dimension.
+
+```{r}
+refold(a.1, 1, dim(a))==a
+```
+
+Lastly, k-mode matrix product is performed.
+
+```{r}
+ttm(a, matrix(1:4,nrow=2), 3)
+```
+
+## 4 Supplementary
+
+Some examples are given here for 'obs_ind'. It provides the largest index without missing entries along a specified mode. For example, tensor $a$ has a missing entry at the index $[3,1,1]$, and hence the largest observed index for mode $(1,2,3)$ would be $[2,0,0]$.
+
+```{r}
+print(obs_ind(a,1))
+print(obs_ind(a,2))
+print(obs_ind(a,3))
+```
+
+More explanations for other functions will be given, once all works are done.
+
+## References
